@@ -54,6 +54,7 @@ func Run(configPath string) {
 
 	// Initializing services
 	services := service.NewServices(repos, jwt)
+	services.EventUpdater.Start(context.Background())
 
 	adminEmail, err := helpers.GetEnv("ADMIN_EMAIL")
 	if err != nil {
