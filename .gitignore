@@ -1,0 +1,9 @@
+.idea
+.bin
+.env
+.data
+vendor
+.DS_Store
+
+# Visual Studio Settings
+.vscode

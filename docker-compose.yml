@@ -1,0 +1,37 @@
+version: '3.4'
+
+services:
+  app:
+    image: ticket-booking-backend-app
+    container_name: ticket-booking-backend-app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 8000:8000
+    depends_on:
+      - postgres
+    volumes:
+      - ./.bin/:/root/
+      - ./internal/infrastructure/configs:/root/internal/infrastructure/configs
+      - ./internal/infrastructure/drivers/postgres/setup:/root/internal/infrastructure/drivers/postgres/setup
+    env_file:
+      - .env
+    environment:
+      - DB_HOST=postgres
+
+  postgres:
+    image: postgres:13
+    container_name: postgres-ticket-booking
+    environment:
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+
+
+volumes:
+  pgdata:

@@ -1,0 +1,580 @@
+definitions:
+  entities.Event:
+    properties:
+      capacity:
+        type: integer
+      created_at:
+        type: string
+      date:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      location:
+        type: string
+      price:
+        type: number
+      status:
+        type: string
+      tickets:
+        items:
+          $ref: '#/definitions/entities.Ticket'
+        type: array
+      tickets_sold:
+        type: integer
+      title:
+        type: string
+    type: object
+  entities.Ticket:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      paid_at:
+        type: string
+      price:
+        type: number
+      reserved_at:
+        type: string
+      status:
+        description: 'Status: ''reserved'', ''paid'', ''cancelled'', ''expired'''
+        type: string
+    type: object
+  helpers.Response:
+    properties:
+      message:
+        type: string
+    type: object
+  requests.AdminSignInRequest:
+    properties:
+      email:
+        maxLength: 64
+        type: string
+      password:
+        maxLength: 64
+        minLength: 8
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  requests.CreateEventRequestBody:
+    properties:
+      capacity:
+        type: integer
+      date:
+        type: string
+      description:
+        type: string
+      location:
+        type: string
+      price:
+        minimum: 0
+        type: number
+      title:
+        type: string
+    required:
+    - capacity
+    - date
+    - description
+    - location
+    - price
+    - title
+    type: object
+  requests.OrganizerSignInRequest:
+    properties:
+      email:
+        maxLength: 64
+        type: string
+      password:
+        maxLength: 64
+        minLength: 8
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  requests.OrganizerSignUpRequest:
+    properties:
+      address:
+        maxLength: 128
+        minLength: 3
+        type: string
+      email:
+        maxLength: 64
+        type: string
+      name:
+        maxLength: 32
+        minLength: 3
+        type: string
+      password:
+        maxLength: 64
+        minLength: 8
+        type: string
+      phone:
+        maxLength: 20
+        minLength: 10
+        type: string
+    required:
+    - email
+    - name
+    - password
+    type: object
+  requests.UpdateEventRequestBody:
+    properties:
+      capacity:
+        type: integer
+      date:
+        type: string
+      description:
+        type: string
+      location:
+        type: string
+      price:
+        minimum: 0
+        type: number
+      title:
+        type: string
+    required:
+    - capacity
+    - date
+    - description
+    - location
+    - price
+    - title
+    type: object
+  requests.UserSignInRequest:
+    properties:
+      email:
+        maxLength: 64
+        type: string
+      password:
+        maxLength: 64
+        minLength: 8
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  requests.UserSignUpRequest:
+    properties:
+      email:
+        maxLength: 64
+        type: string
+      name:
+        maxLength: 32
+        minLength: 3
+        type: string
+      password:
+        maxLength: 64
+        minLength: 8
+        type: string
+    required:
+    - email
+    - name
+    - password
+    type: object
+  responses.TokenResponse:
+    properties:
+      expires_at:
+        type: integer
+      refresh_token:
+        type: string
+      refresh_token_expires_at:
+        type: integer
+      refresh_token_type:
+        type: string
+      success:
+        type: boolean
+      token:
+        type: string
+      token_type:
+        type: string
+    type: object
+info:
+  contact: {}
+paths:
+  /api/v1/admin/sign-in:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate an admin user
+      parameters:
+      - description: Admin sign in info
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/requests.AdminSignInRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/responses.TokenResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/helpers.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/helpers.Response'
+      summary: Admin SignIn
+      tags:
+      - admin-auth
+  /api/v1/events:
+    get:
+      consumes:
+      - application/json
+      description: Fetch all active events (public access)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of active events
+          schema:
+            items:
+              $ref: '#/definitions/entities.Event'
+            type: array
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/helpers.Response'
+      summary: Get Active Events
+      tags:
+      - events
+  /api/v1/events/admin/events:
+    get:
+      consumes:
+      - application/json
+      description: Fetch all events (Admin only)
+      parameters:
+      - description: Event status
+        enum:
+        - active
+        - cancelled
+        - finished
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of all events
+          schema:
+            items:
+              $ref: '#/definitions/entities.Event'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/helpers.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/helpers.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/helpers.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Get All Events (Admin)
+      tags:
+      - events
+  /api/v1/events/organizer/events:
+    get:
+      consumes:
+      - application/json
+      description: Fetch all events for the authenticated organizer
+      parameters:
+      - description: Event status
+        enum:
+        - active
+        - cancelled
+        - finished
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of organizer's events
+          schema:
+            items:
+              $ref: '#/definitions/entities.Event'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/helpers.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/helpers.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/helpers.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Get Organizer Events
+      tags:
+      - events
+    post:
+      consumes:
+      - application/json
+      description: Create a new event (Organizer only)
+      parameters:
+      - description: Event details
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/requests.CreateEventRequestBody'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Event created successfully
+          schema:
+            $ref: '#/definitions/helpers.Response'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/helpers.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/helpers.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/helpers.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/helpers.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Create Event
+      tags:
+      - events
+  /api/v1/events/organizer/events/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete organizer's own event
+      parameters:
+      - description: Event ID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/helpers.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/helpers.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/helpers.Response'
+        "404":
+          description: Event not found
+          schema:
+            $ref: '#/definitions/helpers.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/helpers.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Delete Event
+      tags:
+      - events
+    put:
+      consumes:
+      - application/json
+      description: Update organizer's own event
+      parameters:
+      - description: Event ID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Event details
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/requests.UpdateEventRequestBody'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Updated event
+          schema:
+            $ref: '#/definitions/entities.Event'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/helpers.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/helpers.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/helpers.Response'
+        "404":
+          description: Event not found
+          schema:
+            $ref: '#/definitions/helpers.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/helpers.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Update Event
+      tags:
+      - events
+  /api/v1/organizer/sign-in:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate an organizer user
+      parameters:
+      - description: Organizer sign in info
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/requests.OrganizerSignInRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/responses.TokenResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/helpers.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/helpers.Response'
+      summary: Organizer SignIn
+      tags:
+      - organizer-auth
+  /api/v1/organizer/sign-up:
+    post:
+      consumes:
+      - application/json
+      description: Register a new organizer
+      parameters:
+      - description: Organizer sign up info
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/requests.OrganizerSignUpRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/helpers.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/helpers.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/helpers.Response'
+      summary: Organizer SignUp
+      tags:
+      - organizer-auth
+  /api/v1/users/sign-in:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate an existing user
+      parameters:
+      - description: User sign in info
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/requests.UserSignInRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/responses.TokenResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/helpers.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/helpers.Response'
+      summary: User SignIn
+      tags:
+      - users-auth
+  /api/v1/users/sign-up:
+    post:
+      consumes:
+      - application/json
+      description: Register a new user
+      parameters:
+      - description: User sign up info
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/requests.UserSignUpRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/helpers.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/helpers.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/helpers.Response'
+      summary: User SignUp
+      tags:
+      - users-auth
+swagger: "2.0"
