@@ -110,11 +110,6 @@ func (s *usersService) AdminSignIn(ctx context.Context, input *requests.AdminSig
 		return nil, domainErrors.ErrAdminNotFound
 	}
 
-	// Verify the user's role is admin
-	if admin.Role != values.AdminRole {
-		return nil, domainErrors.ErrInsufficientPermissions
-	}
-
 	// Verify the password
 	if !helpers.CheckPasswordHash(input.Password, admin.Password) {
 		return nil, domainErrors.ErrUserPasswordIncorrect
@@ -178,11 +173,6 @@ func (s *usersService) OrganizerSignIn(ctx context.Context, input *requests.Orga
 	organizer, err := s.repo.GetByEmail(ctx, input.Email)
 	if err != nil {
 		return nil, domainErrors.ErrOrganizerNotFound
-	}
-
-	// Verify the user's role is organizer
-	if organizer.Role != values.OrganizerRole {
-		return nil, domainErrors.ErrInsufficientPermissions
 	}
 
 	// Verify the password

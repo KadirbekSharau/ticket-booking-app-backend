@@ -29,7 +29,6 @@ func (r *usersRepository) GetByEmail(ctx context.Context, email string) (*entiti
 	var user entities.User
 
 	err := r.db.WithContext(ctx).
-		Select("users.*, users.organization_id").
 		Where("email = ?", email).
 		First(&user).Error
 

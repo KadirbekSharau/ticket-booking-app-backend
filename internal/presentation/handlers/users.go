@@ -4,11 +4,11 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"ticket-booking-app-backend/internal/application/types/requests"
 	domainErrors "ticket-booking-app-backend/internal/domain/types"
 	"ticket-booking-app-backend/internal/helpers"
-	"ticket-booking-app-backend/pkg/values"
+
+	"github.com/gin-gonic/gin"
 )
 
 // initUsersRoutes initializes the user routes.
@@ -18,11 +18,11 @@ func (h *Handler) initUsersRoutes(api *gin.RouterGroup) {
 		users.POST("/sign-in", h.userSignIn)
 		users.POST("/sign-up", h.userSignUp)
 	}
-	admin := api.Group("/admin", h.authMiddleware.RoleMiddleware(values.AdminRole))
+	admin := api.Group("/admin")
 	{
 		admin.POST("/sign-in", h.adminSignIn)
 	}
-	organizer := api.Group("/organizer", h.authMiddleware.RoleMiddleware(values.OrganizerRole))
+	organizer := api.Group("/organizer")
 	{
 		organizer.POST("/sign-in", h.organizerSignIn)
 		organizer.POST("/sign-up", h.organizerSignUp)
@@ -144,7 +144,6 @@ func (h *Handler) organizerSignUp(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, helpers.NewResponse("organizer created"))
 }
-
 
 // organizerSignIn handles the organizer sign in request.
 // @Summary Organizer SignIn
