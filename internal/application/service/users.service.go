@@ -96,9 +96,6 @@ func (s *usersService) UserSignIn(ctx context.Context, input *requests.UserSignI
 		Token:                 token.AccessToken,
 		TokenType:             BEARER_TOKEN_TYPE,
 		ExpiresAt:             token.AccessTokenExpiresAt,
-		RefreshToken:          token.RefreshToken,
-		RefreshTokenType:      BEARER_TOKEN_TYPE,
-		RefreshTokenExpiresAt: token.RefreshTokenExpiresAt,
 	}, nil
 }
 
@@ -130,9 +127,6 @@ func (s *usersService) AdminSignIn(ctx context.Context, input *requests.AdminSig
 		Token:                 token.AccessToken,
 		TokenType:             BEARER_TOKEN_TYPE,
 		ExpiresAt:             token.AccessTokenExpiresAt,
-		RefreshToken:          token.RefreshToken,
-		RefreshTokenType:      BEARER_TOKEN_TYPE,
-		RefreshTokenExpiresAt: token.RefreshTokenExpiresAt,
 	}, nil
 }
 
@@ -195,9 +189,6 @@ func (s *usersService) OrganizerSignIn(ctx context.Context, input *requests.Orga
 		Token:                 token.AccessToken,
 		TokenType:             BEARER_TOKEN_TYPE,
 		ExpiresAt:             token.AccessTokenExpiresAt,
-		RefreshToken:          token.RefreshToken,
-		RefreshTokenType:      BEARER_TOKEN_TYPE,
-		RefreshTokenExpiresAt: token.RefreshTokenExpiresAt,
 	}, nil
 }
 

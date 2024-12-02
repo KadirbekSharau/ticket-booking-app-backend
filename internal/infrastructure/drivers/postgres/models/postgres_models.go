@@ -15,7 +15,7 @@ type User struct {
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at"`
 	Email     string         `gorm:"type:varchar(255);not null;unique" json:"email"`
 	Password  string         `gorm:"type:varchar(255);not null" json:"password"`
-	Name      string         `gorm:"type:varchar(100)" json:"first_name"`
+	Name      string         `gorm:"type:varchar(100)" json:"name"`
 	Address   string         `gorm:"type:varchar(255)" json:"address"`
 	Phone     string         `gorm:"type:varchar(20)" json:"phone"`
 	Role      string         `gorm:"type:varchar(50);not null;default:'user'" json:"role"` // Roles: 'user', 'organizer'

@@ -1,9 +1,10 @@
 package handlers
 
 import (
-	"github.com/gin-gonic/gin"
 	"ticket-booking-app-backend/internal/application/service"
 	"ticket-booking-app-backend/internal/presentation/middleware"
+
+	"github.com/gin-gonic/gin"
 )
 
 type Handler struct {
@@ -23,5 +24,6 @@ func (h *Handler) Init(api *gin.RouterGroup) {
 	{
 		h.initUsersRoutes(v1)
 		h.initEventsRoutes(v1)
+		h.initTicketsRoutes(v1)
 	}
 }

@@ -215,13 +215,8 @@ func (r *eventsRepository) DeleteEvent(ctx context.Context, eventID, organizerID
             return err
         }
 
-        // Don't allow deleting if event is already finished
-        if event.Status == values.EventStatusFinished {
-            return errors.New("cannot delete finished event")
-        }
-
         // Update status to cancelled instead of deleting
-        return tx.Model(&event).Update("status", values.EventStatusCancelled).Error
+        return tx.Model(&event).Delete(&event).Error
     })
 }
 

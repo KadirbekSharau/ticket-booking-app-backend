@@ -63,7 +63,12 @@ const docTemplate = `{
         },
         "/api/v1/events": {
             "get": {
-                "description": "Fetch all active events (public access)",
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Get a list of all active events",
                 "consumes": [
                     "application/json"
                 ],
@@ -73,10 +78,10 @@ const docTemplate = `{
                 "tags": [
                     "events"
                 ],
-                "summary": "Get Active Events",
+                "summary": "List Active Events",
                 "responses": {
                     "200": {
-                        "description": "List of active events",
+                        "description": "OK",
                         "schema": {
                             "type": "array",
                             "items": {
@@ -84,8 +89,14 @@ const docTemplate = `{
                             }
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/helpers.Response"
+                        }
+                    },
                     "500": {
-                        "description": "Internal server error",
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/helpers.Response"
                         }
@@ -93,14 +104,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/events/admin/events": {
+        "/api/v1/events/admin": {
             "get": {
                 "security": [
                     {
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Fetch all events (Admin only)",
+                "description": "Get all events (admin only)",
                 "consumes": [
                     "application/json"
                 ],
@@ -110,23 +121,18 @@ const docTemplate = `{
                 "tags": [
                     "events"
                 ],
-                "summary": "Get All Events (Admin)",
+                "summary": "List All Events",
                 "parameters": [
                     {
-                        "enum": [
-                            "active",
-                            "cancelled",
-                            "finished"
-                        ],
                         "type": "string",
-                        "description": "Event status",
+                        "description": "Event status filter (active/cancelled/finished)",
                         "name": "status",
                         "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "List of all events",
+                        "description": "OK",
                         "schema": {
                             "type": "array",
                             "items": {
@@ -147,7 +153,7 @@ const docTemplate = `{
                         }
                     },
                     "500": {
-                        "description": "Internal server error",
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/helpers.Response"
                         }
@@ -155,14 +161,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/events/organizer/events": {
+        "/api/v1/events/organizer": {
             "get": {
                 "security": [
                     {
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Fetch all events for the authenticated organizer",
+                "description": "Get list of events for authenticated organizer",
                 "consumes": [
                     "application/json"
                 ],
@@ -172,28 +178,29 @@ const docTemplate = `{
                 "tags": [
                     "events"
                 ],
-                "summary": "Get Organizer Events",
+                "summary": "List Organizer Events",
                 "parameters": [
                     {
-                        "enum": [
-                            "active",
-                            "cancelled",
-                            "finished"
-                        ],
                         "type": "string",
-                        "description": "Event status",
+                        "description": "Event status filter (active/cancelled/finished)",
                         "name": "status",
                         "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "List of organizer's events",
+                        "description": "OK",
                         "schema": {
                             "type": "array",
                             "items": {
                                 "$ref": "#/definitions/entities.Event"
                             }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/helpers.Response"
                         }
                     },
                     "401": {
@@ -209,7 +216,7 @@ const docTemplate = `{
                         }
                     },
                     "500": {
-                        "description": "Internal server error",
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/helpers.Response"
                         }
@@ -222,7 +229,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Create a new event (Organizer only)",
+                "description": "Create a new event",
                 "consumes": [
                     "application/json"
                 ],
@@ -235,7 +242,7 @@ const docTemplate = `{
                 "summary": "Create Event",
                 "parameters": [
                     {
-                        "description": "Event details",
+                        "description": "Event data",
                         "name": "input",
                         "in": "body",
                         "required": true,
@@ -246,13 +253,13 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "201": {
-                        "description": "Event created successfully",
+                        "description": "Created",
                         "schema": {
                             "$ref": "#/definitions/helpers.Response"
                         }
                     },
                     "400": {
-                        "description": "Bad request",
+                        "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/helpers.Response"
                         }
@@ -270,7 +277,7 @@ const docTemplate = `{
                         }
                     },
                     "500": {
-                        "description": "Internal server error",
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/helpers.Response"
                         }
@@ -278,14 +285,81 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/events/organizer/events/{id}": {
+        "/api/v1/events/organizer/cancel/{id}": {
             "put": {
                 "security": [
                     {
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Update organizer's own event",
+                "description": "Cancel an event",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "events"
+                ],
+                "summary": "Cancel Event",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Event ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/helpers.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/helpers.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/helpers.Response"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/helpers.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/helpers.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/helpers.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/events/organizer/{id}": {
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Update an existing event",
                 "consumes": [
                     "application/json"
                 ],
@@ -299,14 +373,13 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "format": "uuid",
                         "description": "Event ID",
                         "name": "id",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "Event details",
+                        "description": "Event data",
                         "name": "input",
                         "in": "body",
                         "required": true,
@@ -317,13 +390,13 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Updated event",
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/entities.Event"
                         }
                     },
                     "400": {
-                        "description": "Bad request",
+                        "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/helpers.Response"
                         }
@@ -341,13 +414,13 @@ const docTemplate = `{
                         }
                     },
                     "404": {
-                        "description": "Event not found",
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/helpers.Response"
                         }
                     },
                     "500": {
-                        "description": "Internal server error",
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/helpers.Response"
                         }
@@ -360,7 +433,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Delete organizer's own event",
+                "description": "Delete an event",
                 "consumes": [
                     "application/json"
                 ],
@@ -374,7 +447,6 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "format": "uuid",
                         "description": "Event ID",
                         "name": "id",
                         "in": "path",
@@ -382,11 +454,14 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
-                    "204": {
-                        "description": "No Content"
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/helpers.Response"
+                        }
                     },
                     "400": {
-                        "description": "Bad request",
+                        "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/helpers.Response"
                         }
@@ -404,13 +479,13 @@ const docTemplate = `{
                         }
                     },
                     "404": {
-                        "description": "Event not found",
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/helpers.Response"
                         }
                     },
                     "500": {
-                        "description": "Internal server error",
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/helpers.Response"
                         }
@@ -858,15 +933,6 @@ const docTemplate = `{
             "properties": {
                 "expires_at": {
                     "type": "integer"
-                },
-                "refresh_token": {
-                    "type": "string"
-                },
-                "refresh_token_expires_at": {
-                    "type": "integer"
-                },
-                "refresh_token_type": {
-                    "type": "string"
                 },
                 "success": {
                     "type": "boolean"

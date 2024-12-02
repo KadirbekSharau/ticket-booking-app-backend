@@ -7,15 +7,17 @@ import (
 )
 
 type Repository struct {
-	Common CommonRepository
-	Users  UsersRepository
-	Events EventsRepository
+	Common  CommonRepository
+	Users   UsersRepository
+	Events  EventsRepository
+	Tickets TicketsRepository
 }
 
 func NewRepositories(db *gorm.DB) *Repository {
 	return &Repository{
-		Common: postgres.NewCommonRepository(db),
-		Users:  postgres.NewUsersRepository(db),
-		Events: postgres.NewEventsRepository(db),
+		Common:  postgres.NewCommonRepository(db),
+		Users:   postgres.NewUsersRepository(db),
+		Events:  postgres.NewEventsRepository(db),
+		Tickets: postgres.NewTicketsRepository(db),
 	}
 }

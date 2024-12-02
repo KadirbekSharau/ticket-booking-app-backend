@@ -180,12 +180,6 @@ definitions:
     properties:
       expires_at:
         type: integer
-      refresh_token:
-        type: string
-      refresh_token_expires_at:
-        type: integer
-      refresh_token_type:
-        type: string
       success:
         type: boolean
       token:
@@ -230,34 +224,36 @@ paths:
     get:
       consumes:
       - application/json
-      description: Fetch all active events (public access)
+      description: Get a list of all active events
       produces:
       - application/json
       responses:
         "200":
-          description: List of active events
+          description: OK
           schema:
             items:
               $ref: '#/definitions/entities.Event'
             type: array
-        "500":
-          description: Internal server error
+        "401":
+          description: Unauthorized
           schema:
             $ref: '#/definitions/helpers.Response'
-      summary: Get Active Events
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/helpers.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: List Active Events
       tags:
       - events
-  /api/v1/events/admin/events:
+  /api/v1/events/admin:
     get:
       consumes:
       - application/json
-      description: Fetch all events (Admin only)
+      description: Get all events (admin only)
       parameters:
-      - description: Event status
-        enum:
-        - active
-        - cancelled
-        - finished
+      - description: Event status filter (active/cancelled/finished)
         in: query
         name: status
         type: string
@@ -265,7 +261,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: List of all events
+          description: OK
           schema:
             items:
               $ref: '#/definitions/entities.Event'
@@ -279,25 +275,21 @@ paths:
           schema:
             $ref: '#/definitions/helpers.Response'
         "500":
-          description: Internal server error
+          description: Internal Server Error
           schema:
             $ref: '#/definitions/helpers.Response'
       security:
       - ApiKeyAuth: []
-      summary: Get All Events (Admin)
+      summary: List All Events
       tags:
       - events
-  /api/v1/events/organizer/events:
+  /api/v1/events/organizer:
     get:
       consumes:
       - application/json
-      description: Fetch all events for the authenticated organizer
+      description: Get list of events for authenticated organizer
       parameters:
-      - description: Event status
-        enum:
-        - active
-        - cancelled
-        - finished
+      - description: Event status filter (active/cancelled/finished)
         in: query
         name: status
         type: string
@@ -305,11 +297,15 @@ paths:
       - application/json
       responses:
         "200":
-          description: List of organizer's events
+          description: OK
           schema:
             items:
               $ref: '#/definitions/entities.Event'
             type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/helpers.Response'
         "401":
           description: Unauthorized
           schema:
@@ -319,20 +315,20 @@ paths:
           schema:
             $ref: '#/definitions/helpers.Response'
         "500":
-          description: Internal server error
+          description: Internal Server Error
           schema:
             $ref: '#/definitions/helpers.Response'
       security:
       - ApiKeyAuth: []
-      summary: Get Organizer Events
+      summary: List Organizer Events
       tags:
       - events
     post:
       consumes:
       - application/json
-      description: Create a new event (Organizer only)
+      description: Create a new event
       parameters:
-      - description: Event details
+      - description: Event data
         in: body
         name: input
         required: true
@@ -342,11 +338,11 @@ paths:
       - application/json
       responses:
         "201":
-          description: Event created successfully
+          description: Created
           schema:
             $ref: '#/definitions/helpers.Response'
         "400":
-          description: Bad request
+          description: Bad Request
           schema:
             $ref: '#/definitions/helpers.Response'
         "401":
@@ -358,7 +354,7 @@ paths:
           schema:
             $ref: '#/definitions/helpers.Response'
         "500":
-          description: Internal server error
+          description: Internal Server Error
           schema:
             $ref: '#/definitions/helpers.Response'
       security:
@@ -366,14 +362,13 @@ paths:
       summary: Create Event
       tags:
       - events
-  /api/v1/events/organizer/events/{id}:
+  /api/v1/events/organizer/{id}:
     delete:
       consumes:
       - application/json
-      description: Delete organizer's own event
+      description: Delete an event
       parameters:
       - description: Event ID
-        format: uuid
         in: path
         name: id
         required: true
@@ -381,10 +376,12 @@ paths:
       produces:
       - application/json
       responses:
-        "204":
-          description: No Content
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/helpers.Response'
         "400":
-          description: Bad request
+          description: Bad Request
           schema:
             $ref: '#/definitions/helpers.Response'
         "401":
@@ -396,11 +393,11 @@ paths:
           schema:
             $ref: '#/definitions/helpers.Response'
         "404":
-          description: Event not found
+          description: Not Found
           schema:
             $ref: '#/definitions/helpers.Response'
         "500":
-          description: Internal server error
+          description: Internal Server Error
           schema:
             $ref: '#/definitions/helpers.Response'
       security:
@@ -411,15 +408,14 @@ paths:
     put:
       consumes:
       - application/json
-      description: Update organizer's own event
+      description: Update an existing event
       parameters:
       - description: Event ID
-        format: uuid
         in: path
         name: id
         required: true
         type: string
-      - description: Event details
+      - description: Event data
         in: body
         name: input
         required: true
@@ -429,11 +425,11 @@ paths:
       - application/json
       responses:
         "200":
-          description: Updated event
+          description: OK
           schema:
             $ref: '#/definitions/entities.Event'
         "400":
-          description: Bad request
+          description: Bad Request
           schema:
             $ref: '#/definitions/helpers.Response'
         "401":
@@ -445,16 +441,59 @@ paths:
           schema:
             $ref: '#/definitions/helpers.Response'
         "404":
-          description: Event not found
+          description: Not Found
           schema:
             $ref: '#/definitions/helpers.Response'
         "500":
-          description: Internal server error
+          description: Internal Server Error
           schema:
             $ref: '#/definitions/helpers.Response'
       security:
       - ApiKeyAuth: []
       summary: Update Event
+      tags:
+      - events
+  /api/v1/events/organizer/cancel/{id}:
+    put:
+      consumes:
+      - application/json
+      description: Cancel an event
+      parameters:
+      - description: Event ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/helpers.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/helpers.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/helpers.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/helpers.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/helpers.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/helpers.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Cancel Event
       tags:
       - events
   /api/v1/organizer/sign-in:

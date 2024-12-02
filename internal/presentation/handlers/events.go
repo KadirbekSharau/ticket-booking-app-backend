@@ -3,6 +3,7 @@ package handlers
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	"ticket-booking-app-backend/internal/application/types/requests"
@@ -16,42 +17,49 @@ import (
 
 // initEventsRoutes initializes the event routes
 func (h *Handler) initEventsRoutes(api *gin.RouterGroup) {
-	events := api.Group("/events")
+	events := api.Group("/events", h.authMiddleware.UserIdentity)
 	{
 		// Public routes
 		events.GET("/", h.getActiveEvents) // For all users to see active events
 
 		// Protected routes
-		authorized := events.Group("/", h.authMiddleware.UserIdentity)
+		// Organizer routes
+		organizer := events.Group("/organizer", h.authMiddleware.RoleMiddleware(values.OrganizerRole, values.AdminRole))
 		{
-			// Organizer routes
-			organizer := authorized.Group("/organizer", h.authMiddleware.RoleMiddleware(values.OrganizerRole, values.AdminRole))
-			{
-				organizer.GET("/events", h.getOrganizerEvents) // Get organizer's own events
-				organizer.POST("/events", h.createEvent)       // Create new event
-				organizer.PUT("/events/:id", h.updateEvent)    // Update own event
-				organizer.DELETE("/events/:id", h.deleteEvent) // Delete own event
-			}
+			organizer.GET("/", h.getOrganizerEvents)    // Get organizer's own events
+			organizer.POST("/", h.createEvent)          // Create new event
+			organizer.PUT("/:id", h.updateEvent)        // Update own event
+			organizer.DELETE("/:id", h.deleteEvent)     // Delete own event
+			organizer.PUT("/cancel/:id", h.cancelEvent) // Cancel own event
+		}
 
-			// Admin routes
-			admin := authorized.Group("/admin", h.authMiddleware.RoleMiddleware(values.AdminRole))
-			{
-				admin.GET("/events", h.getAllEvents) // Get all events
-			}
+		// Admin routes
+		admin := events.Group("/admin", h.authMiddleware.RoleMiddleware(values.AdminRole))
+		{
+			admin.GET("/", h.getAllEvents) // Get all events
 		}
 	}
 }
 
-// @Summary Get Active Events
+// @Summary List Active Events
 // @Tags events
-// @Description Fetch all active events (public access)
+// @Description Get a list of all active events
 // @Accept json
 // @Produce json
-// @Success 200 {array} entities.Event "List of active events"
-// @Failure 500 {object} helpers.Response "Internal server error"
+// @Security ApiKeyAuth
+// @Success 200 {array} entities.Event
+// @Failure 401 {object} helpers.Response
+// @Failure 500 {object} helpers.Response
 // @Router /api/v1/events [get]
 func (h *Handler) getActiveEvents(c *gin.Context) {
+	role, err := h.validateContextKey(c, values.RoleCtx)
+	if err != nil {
+		logrus.Warn("Error getting role from context")
+		return
+	}
+
 	inp := requests.GetEventsRequest{
+		Role:   role,
 		Status: values.EventStatusActive,
 	}
 
@@ -65,25 +73,38 @@ func (h *Handler) getActiveEvents(c *gin.Context) {
 	c.JSON(http.StatusOK, events)
 }
 
-// @Summary Get Organizer Events
+// @Summary List Organizer Events
 // @Tags events
-// @Description Fetch all events for the authenticated organizer
+// @Description Get list of events for authenticated organizer
 // @Accept json
 // @Produce json
-// @Param status query string false "Event status" Enums(active, cancelled, finished)
+// @Param status query string false "Event status filter (active/cancelled/finished)"
 // @Security ApiKeyAuth
-// @Success 200 {array} entities.Event "List of organizer's events"
-// @Failure 401 {object} helpers.Response "Unauthorized"
-// @Failure 403 {object} helpers.Response "Forbidden"
-// @Failure 500 {object} helpers.Response "Internal server error"
-// @Router /api/v1/events/organizer/events [get]
+// @Success 200 {array} entities.Event
+// @Failure 400 {object} helpers.Response
+// @Failure 401 {object} helpers.Response
+// @Failure 403 {object} helpers.Response
+// @Failure 500 {object} helpers.Response
+// @Router /api/v1/events/organizer [get]
 func (h *Handler) getOrganizerEvents(c *gin.Context) {
-	organizerID := c.GetString(values.UserIdCtx)
-	status := c.DefaultQuery("status", values.EventStatusActive)
+	organizerID, err := h.validateContextIDKey(c, values.UserIdCtx)
+	if err != nil {
+		return
+	}
+	role, err := h.validateContextKey(c, values.RoleCtx)
+	if err != nil {
+		logrus.Warn("Error getting role from context")
+		return
+	}
+	status, err := h.validateQueryParam(c, values.StatusQueryParam)
+	if err != nil {
+		logrus.Warn("Error getting role from context")
+		return
+	}
 
 	inp := requests.GetEventsByOrganizerRequest{
 		OrganizerID: organizerID,
-		Role:        values.OrganizerRole,
+		Role:        role,
 		Status:      status,
 	}
 
@@ -99,28 +120,39 @@ func (h *Handler) getOrganizerEvents(c *gin.Context) {
 
 // @Summary Create Event
 // @Tags events
-// @Description Create a new event (Organizer only)
+// @Description Create a new event
 // @Accept json
 // @Produce json
-// @Param input body requests.CreateEventRequestBody true "Event details"
+// @Param input body requests.CreateEventRequestBody true "Event data"
 // @Security ApiKeyAuth
-// @Success 201 {object} helpers.Response "Event created successfully"
-// @Failure 400 {object} helpers.Response "Bad request"
-// @Failure 401 {object} helpers.Response "Unauthorized"
-// @Failure 403 {object} helpers.Response "Forbidden"
-// @Failure 500 {object} helpers.Response "Internal server error"
-// @Router /api/v1/events/organizer/events [post]
+// @Success 201 {object} helpers.Response
+// @Failure 400 {object} helpers.Response
+// @Failure 401 {object} helpers.Response
+// @Failure 403 {object} helpers.Response
+// @Failure 500 {object} helpers.Response
+// @Router /api/v1/events/organizer [post]
 func (h *Handler) createEvent(c *gin.Context) {
 	var inp requests.CreateEventRequest
 	if err := c.BindJSON(&inp.Body); err != nil {
-		helpers.NewErrorResponse(c, http.StatusBadRequest, "invalid input body")
+		helpers.NewErrorResponse(c, http.StatusBadRequest, "invalid input body: "+err.Error())
 		return
 	}
 
-	inp.OrganizerID = c.GetString(values.UserIdCtx)
-	inp.Role = values.OrganizerRole
+	organizerID, err := h.validateContextIDKey(c, values.UserIdCtx)
+	if err != nil {
+		return
+	}
+	role, err := h.validateContextKey(c, values.RoleCtx)
+	fmt.Println(role)
+	if err != nil {
+		logrus.Warn("Error getting role from context")
+		return
+	}
 
-	err := h.services.Events.CreateEvent(c.Request.Context(), &inp)
+	inp.OrganizerID = organizerID
+	inp.Role = role
+
+	err = h.services.Events.CreateEvent(c.Request.Context(), &inp)
 	if err != nil {
 		logrus.Errorf("Error creating event: %s", err)
 		helpers.NewErrorResponse(c, http.StatusInternalServerError, err.Error())
@@ -132,22 +164,31 @@ func (h *Handler) createEvent(c *gin.Context) {
 
 // @Summary Update Event
 // @Tags events
-// @Description Update organizer's own event
+// @Description Update an existing event
 // @Accept json
 // @Produce json
-// @Param id path string true "Event ID" format(uuid)
-// @Param input body requests.UpdateEventRequestBody true "Event details"
+// @Param id path string true "Event ID"
+// @Param input body requests.UpdateEventRequestBody true "Event data"
 // @Security ApiKeyAuth
-// @Success 200 {object} entities.Event "Updated event"
-// @Failure 400 {object} helpers.Response "Bad request"
-// @Failure 401 {object} helpers.Response "Unauthorized"
-// @Failure 403 {object} helpers.Response "Forbidden"
-// @Failure 404 {object} helpers.Response "Event not found"
-// @Failure 500 {object} helpers.Response "Internal server error"
-// @Router /api/v1/events/organizer/events/{id} [put]
+// @Success 200 {object} entities.Event
+// @Failure 400 {object} helpers.Response
+// @Failure 401 {object} helpers.Response
+// @Failure 403 {object} helpers.Response
+// @Failure 404 {object} helpers.Response
+// @Failure 500 {object} helpers.Response
+// @Router /api/v1/events/organizer/{id} [put]
 func (h *Handler) updateEvent(c *gin.Context) {
 	eventID, err := h.validateRequestIDParam(c, values.IdQueryParam)
 	if err != nil {
+		return
+	}
+	organizerID, err := h.validateContextIDKey(c, values.UserIdCtx)
+	if err != nil {
+		return
+	}
+	role, err := h.validateContextKey(c, values.RoleCtx)
+	if err != nil {
+		logrus.Warn("Error getting role from context")
 		return
 	}
 
@@ -158,8 +199,8 @@ func (h *Handler) updateEvent(c *gin.Context) {
 	}
 
 	inp.ID = eventID
-	inp.OrganizerID = c.GetString(values.UserIdCtx)
-	inp.Role = values.OrganizerRole
+	inp.OrganizerID = organizerID
+	inp.Role = role
 
 	event, err := h.services.Events.UpdateEvent(c.Request.Context(), &inp)
 	if err != nil {
@@ -177,18 +218,18 @@ func (h *Handler) updateEvent(c *gin.Context) {
 
 // @Summary Delete Event
 // @Tags events
-// @Description Delete organizer's own event
+// @Description Delete an event
 // @Accept json
 // @Produce json
-// @Param id path string true "Event ID" format(uuid)
+// @Param id path string true "Event ID"
 // @Security ApiKeyAuth
-// @Success 204 "No Content"
-// @Failure 400 {object} helpers.Response "Bad request"
-// @Failure 401 {object} helpers.Response "Unauthorized"
-// @Failure 403 {object} helpers.Response "Forbidden"
-// @Failure 404 {object} helpers.Response "Event not found"
-// @Failure 500 {object} helpers.Response "Internal server error"
-// @Router /api/v1/events/organizer/events/{id} [delete]
+// @Success 200 {object} helpers.Response
+// @Failure 400 {object} helpers.Response
+// @Failure 401 {object} helpers.Response
+// @Failure 403 {object} helpers.Response
+// @Failure 404 {object} helpers.Response
+// @Failure 500 {object} helpers.Response
+// @Router /api/v1/events/organizer/{id} [delete]
 func (h *Handler) deleteEvent(c *gin.Context) {
 	eventID, err := h.validateRequestIDParam(c, values.IdQueryParam)
 	if err != nil {
@@ -211,23 +252,27 @@ func (h *Handler) deleteEvent(c *gin.Context) {
 		return
 	}
 
-	c.Status(http.StatusNoContent)
+	c.JSON(http.StatusOK, helpers.NewResponse("event deleted successfully"))
 }
 
-// @Summary Get All Events (Admin)
+// @Summary List All Events
 // @Tags events
-// @Description Fetch all events (Admin only)
+// @Description Get all events (admin only)
 // @Accept json
 // @Produce json
-// @Param status query string false "Event status" Enums(active, cancelled, finished)
+// @Param status query string false "Event status filter (active/cancelled/finished)"
 // @Security ApiKeyAuth
-// @Success 200 {array} entities.Event "List of all events"
-// @Failure 401 {object} helpers.Response "Unauthorized"
-// @Failure 403 {object} helpers.Response "Forbidden"
-// @Failure 500 {object} helpers.Response "Internal server error"
-// @Router /api/v1/events/admin/events [get]
+// @Success 200 {array} entities.Event
+// @Failure 401 {object} helpers.Response
+// @Failure 403 {object} helpers.Response
+// @Failure 500 {object} helpers.Response
+// @Router /api/v1/events/admin [get]
 func (h *Handler) getAllEvents(c *gin.Context) {
-	status := c.DefaultQuery("status", "")
+	status, err := h.validateQueryParam(c, values.StatusQueryParam)
+	if err != nil {
+		logrus.Warn("Error getting status from query")
+		return
+	}
 
 	inp := requests.GetEventsRequest{
 		Role:   values.AdminRole,
@@ -244,5 +289,50 @@ func (h *Handler) getAllEvents(c *gin.Context) {
 	c.JSON(http.StatusOK, events)
 }
 
-// Admin handlers for updating and deleting any event follow the same pattern
-// Would you like me to include those as well?
+// @Summary Cancel Event
+// @Tags events
+// @Description Cancel an event
+// @Accept json
+// @Produce json
+// @Param id path string true "Event ID"
+// @Security ApiKeyAuth
+// @Success 200 {object} helpers.Response
+// @Failure 400 {object} helpers.Response
+// @Failure 401 {object} helpers.Response
+// @Failure 403 {object} helpers.Response
+// @Failure 404 {object} helpers.Response
+// @Failure 500 {object} helpers.Response
+// @Router /api/v1/events/organizer/cancel/{id} [put]
+func (h *Handler) cancelEvent(c *gin.Context) {
+	eventID, err := h.validateRequestIDParam(c, values.IdQueryParam)
+	if err != nil {
+		return
+	}
+	role, err := h.validateContextKey(c, values.RoleCtx)
+	if err != nil {
+		logrus.Warn("Error getting role from context")
+		return
+	}
+	organizerID, err := h.validateContextIDKey(c, values.UserIdCtx)
+	if err != nil {
+		return
+	}
+
+	inp := requests.CancelEventRequest{
+		ID:          eventID,
+		Role:        role,
+		OrganizerID: organizerID,
+	}
+
+	if err := h.services.Events.CancelEvent(c.Request.Context(), &inp); err != nil {
+		if errors.Is(err, domainErrors.ErrEventNotFound) {
+			helpers.NewErrorResponse(c, http.StatusNotFound, "event not found")
+			return
+		}
+		logrus.Errorf("Error cancelling event: %s", err)
+		helpers.NewErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	c.JSON(http.StatusOK, helpers.NewResponse("event cancelled successfully"))
+}

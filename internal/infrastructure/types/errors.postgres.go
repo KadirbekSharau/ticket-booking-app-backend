@@ -8,3 +8,7 @@ var (
 	ErrEventNotFound = errors.New("event doesn't exists")
 	ErrInvalidUUID = errors.New("invalid UUID")
 )
+
+var (
+	ErrTicketNotFound = errors.New("ticket not found")
+)
