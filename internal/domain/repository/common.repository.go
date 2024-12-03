@@ -11,4 +11,5 @@ type CommonRepository interface {
 	CheckIfEventExists(ctx context.Context, eventID string) error
 	CheckIfEventBelongsToOrganizer(ctx context.Context, eventID, organizerID string) error
 	CheckEventAvailableCapacity(ctx context.Context, eventID string) (int, error)
+	CheckIfUserExceededCapacityForEvent(ctx context.Context, eventID, userID string, ticketCount int) error
 }

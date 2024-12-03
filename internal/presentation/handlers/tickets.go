@@ -27,13 +27,13 @@ func (h *Handler) initTicketsRoutes(api *gin.RouterGroup) {
 		// Organizer routes
 		organizer := tickets.Group("/organizer", h.authMiddleware.RoleMiddleware(values.OrganizerRole))
 		{
-			organizer.GET("/events/:id", h.getEventTickets)
+			organizer.GET("", h.getEventTickets)
 		}
 
 		// Admin routes
 		admin := tickets.Group("/admin", h.authMiddleware.RoleMiddleware(values.AdminRole))
 		{
-			admin.GET("/events/:id", h.getEventTickets)
+			admin.GET("", h.getEventTickets)
 		}
 	}
 }

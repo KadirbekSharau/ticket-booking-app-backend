@@ -39,6 +39,10 @@ func (s *ticketsService) ReserveTickets(ctx context.Context, input *requests.Res
 		return nil, fmt.Errorf("cannot reserve more than %d tickets at once", values.MaxTicketsPerPurchase)
 	}
 
+	if err := s.commonRepo.CheckIfUserExceededCapacityForEvent(ctx, input.EventID, input.UserID, input.Body.Quantity); err != nil {
+		return nil, err
+	}
+
 	// Verify event is active
 	if err := s.commonRepo.CheckIfEventIsActive(ctx, input.EventID); err != nil {
 		return nil, err
@@ -79,7 +83,7 @@ func (s *ticketsService) GetTicketByID(ctx context.Context, input *requests.GetT
 }
 
 func (s *ticketsService) GetUserTickets(ctx context.Context, input *requests.GetUserTicketsRequest) ([]*entities.Ticket, error) {
-	return s.repo.GetTicketsByUser(ctx, input.UserID)
+	return s.repo.GetTicketsByUser(ctx, input.UserID, input.Status)
 }
 
 func (s *ticketsService) GetEventTickets(ctx context.Context, input *requests.GetEventTicketsRequest) ([]*entities.Ticket, error) {
@@ -96,7 +100,7 @@ func (s *ticketsService) GetEventTickets(ctx context.Context, input *requests.Ge
 		}
 	}
 
-	return s.repo.GetTicketsByEvent(ctx, input.EventID)
+	return s.repo.GetTicketsByEvent(ctx, input.EventID, input.Status)
 }
 
 func (s *ticketsService) CancelTicket(ctx context.Context, input *requests.CancelTicketRequest) error {

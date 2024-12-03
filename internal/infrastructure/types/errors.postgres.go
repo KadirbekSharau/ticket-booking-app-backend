@@ -11,4 +11,5 @@ var (
 
 var (
 	ErrTicketNotFound = errors.New("ticket not found")
+	ErrTicketLimitExceeded = errors.New("ticket limit exceeded")
 )

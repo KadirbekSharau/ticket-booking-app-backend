@@ -83,6 +83,29 @@ func (r *commonRepository) CheckEventAvailableCapacity(ctx context.Context, even
 	return event.Capacity - event.TicketsSold, nil
 }
 
+func (r *commonRepository) CheckIfUserExceededCapacityForEvent(ctx context.Context, eventID, userID string, ticketCount int) error {
+	var count int64
+	err := r.db.WithContext(ctx).
+		Model(&models.Ticket{}).
+		Where(
+			"event_id = ? AND user_id = ? AND status IN (?)",
+			eventID,
+			userID,
+			[]string{values.TicketStatusReserved, values.TicketStatusPaid},
+		).
+		Count(&count).Error
+
+	if err != nil {
+		return fmt.Errorf("error checking user capacity: %w", err)
+	}
+
+	if ticketCount >= values.MaxTicketsPerPurchase-int(count) {
+		return types.ErrTicketLimitExceeded
+	}
+
+	return nil
+}
+
 // validateGormId validates the GORM ID.
 func validateGormId(id string) (uuid.UUID, error) {
 	if id == "" {
